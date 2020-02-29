@@ -50,6 +50,7 @@ app.post("/bot", (req, res) => {
   .then(function(result) {
     if(res.statusCode === 200) {
       const reply_text = result['fulfillmentText']
+      
       var msg_attributes = {}
       var msg = {
         "text": reply_text,
