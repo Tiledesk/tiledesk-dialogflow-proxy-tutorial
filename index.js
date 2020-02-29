@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { TiledeskClient } = require('@tiledesk/tiledesk-chatbot-client');
 const dialogflow = require('dialogflow');
-const credentials = require('./credentials.js');
 
 const app = express();
 app.use(bodyParser.json());
@@ -45,6 +44,7 @@ app.post("/bot", (req, res) => {
 
   const dialogflow_session_id = conversation.request_id
   const lang = 'en-EN'
+  const credentials = process.env.GOOGLE_CREDENTIALS
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
     if(res.statusCode === 200) {
