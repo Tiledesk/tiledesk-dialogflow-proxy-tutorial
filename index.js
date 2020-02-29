@@ -50,7 +50,7 @@ app.post("/bot", (req, res) => {
   .then(function(result) {
     if(res.statusCode === 200) {
       const reply_text = result['fulfillmentText']
-      
+
       var msg_attributes = {}
       var msg = {
         "text": reply_text,
@@ -67,6 +67,7 @@ app.post("/bot", (req, res) => {
   })
 })
 
-app.listen(3000, () => {
+var port = process.env.PORT || 3000;
+app.listen(port, () => {
   console.log('server started');
 });
