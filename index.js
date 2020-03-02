@@ -21,6 +21,7 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   };
   const responses = await sessionClient.detectIntent(request);
   const result = responses[0].queryResult;
+  console.log("query result: ", JSON.stringify(queryResult))
   return result;
 }
 
