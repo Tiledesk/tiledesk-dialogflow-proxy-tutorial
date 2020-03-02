@@ -21,7 +21,6 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   };
   const responses = await sessionClient.detectIntent(request);
   const result = responses[0].queryResult;
-  console.log("query result: ", JSON.stringify(result))
   return result;
 }
 
@@ -36,6 +35,10 @@ app.post("/bot", (req, res) => {
   const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
+    console.log("query result: ", JSON.stringify(result))
+    console.log("is fallback:", result.intent.isFallback)
+    console.log("confidence:", result.intentDetectionConfidence)
+    // intentDetectionConfidence
     if(res.statusCode === 200) {
       const reply_text = result['fulfillmentText']
       var msg_attributes = {}
