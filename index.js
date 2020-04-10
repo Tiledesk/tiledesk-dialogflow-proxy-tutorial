@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { TiledeskClient } = require('@tiledesk/tiledesk-chatbot-client');
+const { TiledeskChatbotUtil } = require('@tiledesk/tiledesk-chatbot-util')
 const dialogflow = require('dialogflow');
 const app = express();
 app.use(bodyParser.json());
@@ -24,14 +25,14 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   return result;
 }
 
-app.post("/bot", (req, res) => {
+app.post("/basicbot", (req, res) => {
   const tdclient = new TiledeskClient({request: req, response: res});
   let conversation = tdclient.conversation
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
   const dialogflow_session_id = conversation.request_id
-  const lang = 'en-EN'
+  const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
   const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
@@ -57,6 +58,41 @@ app.post("/bot", (req, res) => {
   })
 })
 
+app.post("/microlang-bot", (req, res) => {
+  const tdclient = new TiledeskClient({request: req, response: res});
+  let conversation = tdclient.conversation
+  // immediately reply back
+  res.status(200).send({"success":true});
+  // reply messages are sent asynchronously
+  const dialogflow_session_id = conversation.request_id
+  const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
+  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
+  runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
+  .then(function(result) {
+    console.log("query result: ", JSON.stringify(result))
+    console.log("is fallback:", result.intent.isFallback)
+    console.log("confidence:", result.intentDetectionConfidence)
+    // intentDetectionConfidence
+    if(res.statusCode === 200) {
+      const reply_text = result['fulfillmentText']
+      const parsed_reply = new TiledeskChatbotUtil().parseReply(reply_text)
+      const parsed_message = parsed_reply.message
+      var msg = {
+        "text": parsed_message.text,
+        "type": parsed_message.type,
+        "attributes": msg_attributes,
+        "metadata": parsed_message.metadata,
+        "senderFullname": tdclient.botName
+      }
+      tdclient.sendMessage(msg, function (err) {
+        console.log("Message sent.");
+      })
+    }
+  })
+  .catch(function(err) {
+    console.log('Error: ', err);
+  })
+})
 // Use something like this to allow the same endpoint
 // to serve multiple bots
 app.post("/multibot/:agentid", (req, res) => {
