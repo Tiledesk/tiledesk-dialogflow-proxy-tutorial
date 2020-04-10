@@ -102,7 +102,7 @@ app.post("/multibot/:agentid", (req, res) => {
   // id is useful to correctly identify the agent
   const credentials = JSON.parse(process.env[agentid])
   // ...
-}
+});
 
 var port = process.env.PORT || 3000;
 app.listen(port, () => {
