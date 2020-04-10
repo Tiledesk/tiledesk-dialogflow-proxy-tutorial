@@ -57,6 +57,17 @@ app.post("/bot", (req, res) => {
   })
 })
 
+// Use something like this to allow the same endpoint
+// to serve multiple bots
+app.post("/multibot/:agentid", (req, res) => {
+  // const agentid = req.params.agentid;
+  // ...
+  // Place in env an entry for each agent based on whatever
+  // id is useful to correctly identify the agent
+  const credentials = JSON.parse(process.env[agentid])
+  // ...
+}
+
 var port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log('server started');
