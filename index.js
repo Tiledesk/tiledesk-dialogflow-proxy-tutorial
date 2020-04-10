@@ -52,7 +52,7 @@ app.post("/basicbot", (req, res) => {
         console.log("Message sent.");
       })
     }
-  })
+  }) 
   .catch(function(err) {
     console.log('Error: ', err);
   })
