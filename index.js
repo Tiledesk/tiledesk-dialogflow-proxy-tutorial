@@ -98,6 +98,7 @@ app.post("/microlang-bot", (req, res) => {
 app.post("/multibot/:agentid", (req, res) => {
   // const agentid = req.params.agentid;
   // ...
+  
   // Place in env an entry for each agent based on whatever
   // id is useful to correctly identify the agent
   const credentials = JSON.parse(process.env[agentid])
