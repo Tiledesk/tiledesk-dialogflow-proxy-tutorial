@@ -25,15 +25,16 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   return result;
 }
 
-app.post("/basicbot", (req, res) => {
+app.post("/bot/:botid", (req, res) => {
   const tdclient = new TiledeskClient({request: req, response: res});
-  let conversation = tdclient.conversation
+  const botid = req.params.botid;
+  const conversation = tdclient.conversation
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
   const dialogflow_session_id = conversation.request_id
   const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
-  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS)
+  const credentials = JSON.parse(process.env[botid])
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
     console.log("query result: ", JSON.stringify(result))
@@ -98,7 +99,7 @@ app.post("/microlang-bot", (req, res) => {
 app.post("/multibot/:agentid", (req, res) => {
   // const agentid = req.params.agentid;
   // ...
-  
+
   // Place in env an entry for each agent based on whatever
   // id is useful to correctly identify the agent
   const credentials = JSON.parse(process.env[agentid])
