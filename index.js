@@ -25,6 +25,7 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   return result;
 }
 
+// Tutorial 1 - Basic Dialogflow extarnal endpoint
 app.post("/bot/:botid", (req, res) => {
   const tdclient = new TiledeskClient({request: req, response: res});
   const botid = req.params.botid;
@@ -43,11 +44,8 @@ app.post("/bot/:botid", (req, res) => {
     // intentDetectionConfidence
     if(res.statusCode === 200) {
       const reply_text = result['fulfillmentText']
-      var msg_attributes = {}
       var msg = {
-        "text": reply_text,
-        "type": "text",
-        "senderFullname": tdclient.botName
+        "text": reply_text
       }
       tdclient.sendMessage(msg, function (err) {
         console.log("Message sent.");
@@ -59,6 +57,7 @@ app.post("/bot/:botid", (req, res) => {
   })
 })
 
+// Tutorial 2 - Use 'micro language' to easily render buttons or images
 app.post("/microlang-bot/:botid", (req, res) => {
   const tdclient = new TiledeskClient({request: req, response: res});
   const botid = req.params.botid;
@@ -90,7 +89,7 @@ app.post("/microlang-bot/:botid", (req, res) => {
       //   "senderFullname": tdclient.botName
       // }
       tdclient.sendMessage(msg, function (err) {
-        console.log("Message sent.");
+        console.log("Message", msg, "sent.");
       })
     }
   })
@@ -99,9 +98,10 @@ app.post("/microlang-bot/:botid", (req, res) => {
   })
 })
 
-var fallback_count = {}
-
-app.post("/bot-confidence-handoff/:botid", (req, res) => {
+// Tutorial 3 - Automatic human handhoff based on fallback intent
+var fallback_count = {};
+const MAX_FALLBACKS = 4;
+app.post("/bot-fallback-handoff/:botid", (req, res) => {
   const tdclient = new TiledeskClient({request: req, response: res});
   const botid = req.params.botid;
   const conversation = tdclient.conversation
@@ -113,28 +113,36 @@ app.post("/bot-confidence-handoff/:botid", (req, res) => {
   const credentials = JSON.parse(process.env[botid])
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
-    console.log("query result: ", JSON.stringify(result))
-    console.log("is fallback:", result.intent.isFallback)
     if (result.intent.isFallback) {
       if (!fallback_count[dialogflow_session_id]) {
         fallback_count[dialogflow_session_id] = 1
       }
       else {
         fallback_count[dialogflow_session_id]++
+        console.log("fallback of", dialogflow_session_id, "is", fallback_count[dialogflow_session_id])
       }
     }
-    console.log("confidence:", result.intentDetectionConfidence)
-    // intentDetectionConfidence
     if(res.statusCode === 200) {
-      const reply_text = result['fulfillmentText']
-      var msg_attributes = {}
-      var msg = {
-        "text": reply_text,
-        "type": "text",
-        "senderFullname": tdclient.botName
+      let msgs = [];
+      if (fallback_count[dialogflow_session_id] == MAX_FALLBACKS) {
+        fallback_count[dialogflow_session_id] = 0
+        msgs.push({
+          "text": "We are putting you in touch with an operator..."
+        })
+        msgs.push({
+          "text": "\\agent",
+          "attributes" : {subtype: "info"} // this message is hidden in the widget
+        }) 
       }
-      tdclient.sendMessage(msg, function (err) {
-        console.log("Message sent.");
+      else {
+        msgs.push({
+          "text": result['fulfillmentText']
+        })
+      }
+      msgs.forEach( m => {
+        tdclient.sendMessage(m, function (err) {
+          console.log("Message", m.text, "sent.");
+        })
       })
     }
   })
@@ -142,6 +150,42 @@ app.post("/bot-confidence-handoff/:botid", (req, res) => {
     console.log('Error: ', err);
   })
 })
+
+// Tutorial 4 - Ask user for optional Agent handoff
+
+
+// Tutorial 4.1 - Webhook Advanced Agent handoff
+app.post('/dfwebhook', (req, res) => {
+  // console.log("req.body: " , req.body)
+  const fulfillmentText = req.body.queryResult.fulfillmentText
+  console.log("fulfillmentText:", fulfillmentText)
+  const languageCode = req.body.queryResult.languageCode
+  console.log("languageCode:", languageCode)
+  // replace the following with your prject id
+  const project_id = "5e8b398fef981300175e610e"
+  const intent = req.body.queryResult.intent.displayName.toUpperCase()
+  if (intent === "TALK TO AGENT") {
+    // for cloud apis initialize like the this:
+    // const tdclient = new TiledeskClient()
+    // for on premises installations specify your endpoint like this:
+    const tdclient = new TiledeskClient({APIURL: 'https://tiledesk-server-pre.herokuapp.com'})
+    tdclient.getWidgetSettings(project_id, function(response) {
+      const operatingHours = JSON.parse(response.project.operatingHours)
+      tdclient.anonymauth(project_id, function(token) {
+        tdclient.openNow(project_id, token, function(isopen) {
+          var df_res = {}
+          if (isopen) {
+            df_res['fulfillmentText'] = "Ok switching to agent\n\\split\n\\agent"
+          }
+          else {
+            df_res['fulfillmentText'] = "I'm sorry but we are closed"
+          }
+          res.status(200).send(JSON.stringify(df_res));
+        })
+      })
+    })
+  }
+});
 
 var port = process.env.PORT || 3000;
 app.listen(port, () => {
