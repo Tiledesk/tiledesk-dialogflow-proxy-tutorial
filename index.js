@@ -1,11 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { TiledeskClient } = require('@tiledesk/tiledesk-chatbot-client');
+const { TiledeskChatbotClient } = require('@tiledesk/tiledesk-chatbot-client');
 const { TiledeskChatbotUtil } = require('@tiledesk/tiledesk-chatbot-util')
+const { TiledeskClient } = require('@tiledesk/tiledesk-client');
 const dialogflow = require('dialogflow');
 const app = express();
 app.use(bodyParser.json());
 
+// this function is referenced by all the tutorials and uses
+// Dialogflow client APIs to make agents calls
 async function runDialogflowQuery(text, sessionId, language_code, credentials) {
   const project_id = credentials.project_id
   const sessionClient = new dialogflow.SessionsClient({'credentials':credentials});
@@ -27,9 +30,9 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
 
 // Tutorial 1 - Basic Dialogflow extarnal endpoint
 app.post("/bot/:botid", (req, res) => {
-  const tdclient = new TiledeskClient({request: req, response: res});
+  const tdclient = new TiledeskChatbotClient({request: req});
   const botid = req.params.botid;
-  const conversation = tdclient.conversation
+  const conversation = tdclient.supportRequest
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
@@ -57,12 +60,12 @@ app.post("/bot/:botid", (req, res) => {
   })
 })
 
-// Tutorial 2 - Use 'micro language' to easily render buttons or images
+// Tutorial 2 - Advanced tutorial using 'micro language' to render buttons or images
 app.post("/microlang-bot/:botid", (req, res) => {
-  const tdclient = new TiledeskClient({request: req, response: res});
+  const tdclient = new TiledeskChatbotClient({request: req});
   const botid = req.params.botid;
   console.log("botid:", botid)
-  const conversation = tdclient.conversation
+  const conversation = tdclient.supportRequest
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
@@ -99,33 +102,41 @@ app.post("/microlang-bot/:botid", (req, res) => {
 })
 
 // Tutorial 3 - Automatic human handhoff based on fallback intent
-var fallback_count = {};
+// In this tutorial the human handoff happens after some consective
+// missed replies (fallback)
+var consecutive_fallback_count = {};
 const MAX_FALLBACKS = 4;
 app.post("/bot-fallback-handoff/:botid", (req, res) => {
-  const tdclient = new TiledeskClient({request: req, response: res});
+  const tdclient = new TiledeskChatbotClient({request: req});
+  console.log("tdclient", tdclient)
   const botid = req.params.botid;
-  const conversation = tdclient.conversation
+  const supportRequest = tdclient.supportRequest
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
-  const dialogflow_session_id = conversation.request_id
+  const dialogflow_session_id = supportRequest.request_id
   const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
   const credentials = JSON.parse(process.env[botid])
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
+    if (!consecutive_fallback_count[dialogflow_session_id]) {
+      // init consecutive fallback count for this conversation
+      consecutive_fallback_count[dialogflow_session_id] = 0
+    }
     if (result.intent.isFallback) {
-      if (!fallback_count[dialogflow_session_id]) {
-        fallback_count[dialogflow_session_id] = 1
-      }
-      else {
-        fallback_count[dialogflow_session_id]++
-        console.log("fallback of", dialogflow_session_id, "is", fallback_count[dialogflow_session_id])
-      }
+      consecutive_fallback_count[dialogflow_session_id]++
+      console.log("fallback of", dialogflow_session_id, "is", consecutive_fallback_count[dialogflow_session_id])
+    }
+    else {
+      // reset fallback on every positive hit.
+      // here you can also evaluate result.intentDetectionConfidence
+      // and consider it as a fallback if under some threshold value
+      consecutive_fallback_count[dialogflow_session_id] = 0
     }
     if(res.statusCode === 200) {
       let msgs = [];
-      if (fallback_count[dialogflow_session_id] == MAX_FALLBACKS) {
-        fallback_count[dialogflow_session_id] = 0
+      if (consecutive_fallback_count[dialogflow_session_id] == MAX_FALLBACKS) {
+        consecutive_fallback_count[dialogflow_session_id] = 0
         msgs.push({
           "text": "We are putting you in touch with an operator..."
         })
@@ -167,6 +178,7 @@ app.post('/dfwebhook', (req, res) => {
   if (intent === "TALK TO AGENT") {
     // for cloud apis initialize like the this:
     // const tdclient = new TiledeskClient()
+
     // for on premises installations specify your endpoint like this:
     const tdclient = new TiledeskClient({APIURL: 'https://tiledesk-server-pre.herokuapp.com'})
     tdclient.getWidgetSettings(project_id, function(response) {
