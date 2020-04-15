@@ -164,36 +164,31 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
 
 // Tutorial 4 - Ask user for optional Agent handoff
 
-
-// Tutorial 4.1 - Webhook Advanced Agent handoff
-app.post('/dfwebhook', (req, res) => {
+// Tutorial 4.1 - Webhook for Bot-Agent handoff message based on opening hours
+app.post('/dfwebhook/:project_id', (req, res) => {
   // console.log("req.body: " , req.body)
   const fulfillmentText = req.body.queryResult.fulfillmentText
   console.log("fulfillmentText:", fulfillmentText)
   const languageCode = req.body.queryResult.languageCode
   console.log("languageCode:", languageCode)
   // replace the following with your prject id
-  const project_id = "5e8b398fef981300175e610e"
+  const project_id = req.params.project_id
   const intent = req.body.queryResult.intent.displayName.toUpperCase()
   if (intent === "TALK TO AGENT") {
     // for cloud apis initialize like the this:
     // const tdclient = new TiledeskClient()
-
     // for on premises installations specify your endpoint like this:
     const tdclient = new TiledeskClient({APIURL: 'https://tiledesk-server-pre.herokuapp.com'})
-    tdclient.getWidgetSettings(project_id, function(response) {
-      const operatingHours = JSON.parse(response.project.operatingHours)
-      tdclient.anonymauth(project_id, function(token) {
-        tdclient.openNow(project_id, token, function(isopen) {
-          var df_res = {}
-          if (isopen) {
-            df_res['fulfillmentText'] = "Ok switching to agent\n\\split\n\\agent"
-          }
-          else {
-            df_res['fulfillmentText'] = "I'm sorry but we are closed"
-          }
-          res.status(200).send(JSON.stringify(df_res));
-        })
+    tdclient.anonymauth(project_id, function(token) {
+      tdclient.openNow(project_id, token, function(isopen) {
+        var df_res = {}
+        if (isopen) {
+          df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
+        }
+        else {
+          df_res['fulfillmentText'] = "I'm sorry but we are closed right now."
+        }
+        res.status(200).send(JSON.stringify(df_res));
       })
     })
   }
