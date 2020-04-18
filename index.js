@@ -30,7 +30,10 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
 
 // Tutorial 1 - Basic Dialogflow extarnal endpoint
 app.post("/bot/:botid", (req, res) => {
-  const tdclient = new TiledeskChatbotClient({request: req});
+  // for cloud apis initialize like the this:
+  const tdclient = new TiledeskChatbotClient({request: req})
+  // for on premises installations specify your endpoint like this:
+  // const tdclient = new TiledeskChatbotClient({request: req, APIURL: 'YOUR ON PREM ENDPOINT'});
   const botid = req.params.botid;
   const conversation = tdclient.supportRequest
   // immediately reply back
@@ -41,6 +44,7 @@ app.post("/bot/:botid", (req, res) => {
   const credentials = JSON.parse(process.env[botid])
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
+    
     console.log("query result: ", JSON.stringify(result))
     console.log("is fallback:", result.intent.isFallback)
     console.log("confidence:", result.intentDetectionConfidence)
@@ -107,7 +111,10 @@ app.post("/microlang-bot/:botid", (req, res) => {
 var consecutive_fallback_count = {};
 const MAX_FALLBACKS = 4;
 app.post("/bot-fallback-handoff/:botid", (req, res) => {
-  const tdclient = new TiledeskChatbotClient({request: req});
+  const tdclient = new TiledeskChatbotClient(
+    {request: req,
+     APIURL: 'https://tiledesk-server-pre.herokuapp.com'
+    });
   console.log("tdclient", tdclient)
   const botid = req.params.botid;
   const supportRequest = tdclient.supportRequest
