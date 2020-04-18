@@ -147,8 +147,8 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
           "text": "I really don't understand your questions, putting you in touch with an operator..."
         })
         msgs.push({
-          "text": "\\agent",
-          "attributes" : {subtype: "info"} // this message is hidden in the widget
+          "text": "\\agent"
+          // "attributes" : {subtype: "info"} // this message is hidden in the widget
         })
       }
       else {
