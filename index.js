@@ -144,12 +144,12 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
       if (consecutive_fallback_count[dialogflow_session_id] == MAX_FALLBACKS) {
         consecutive_fallback_count[dialogflow_session_id] = 0
         msgs.push({
-          "text": "We are putting you in touch with an operator..."
+          "text": "I really don't understand your questions, putting you in touch with an operator..."
         })
         msgs.push({
           "text": "\\agent",
           "attributes" : {subtype: "info"} // this message is hidden in the widget
-        }) 
+        })
       }
       else {
         msgs.push({
