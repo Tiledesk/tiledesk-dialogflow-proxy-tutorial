@@ -1,7 +1,6 @@
 {
   "name": "tiledesk-dialogflow-proxy",
   "version": "1.0.0",
-
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,10 +10,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  
   "dependencies": {
-    "@tiledesk/tiledesk-chatbot-client": "^0.5.2",
+    "@tiledesk/tiledesk-chatbot-client": "^0.5.10",
     "@tiledesk/tiledesk-chatbot-util": "^0.8.4",
+    "@tiledesk/tiledesk-client": "^0.6.1",
     "body-parser": "^1.19.0",
     "dialogflow": "^1.1.2",
     "express": "^4.17.1",
