@@ -32,8 +32,8 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
 app.post("/bot/:botid", (req, res) => {
   // for cloud apis initialize like the this:
   const tdclient = new TiledeskChatbotClient({request: req})
-  // for on premises installations specify your endpoint like this:
-  // const tdclient = new TiledeskChatbotClient({request: req, APIURL: 'YOUR ON PREM ENDPOINT'});
+  // for on-prem installations specify your endpoint like this:
+  // const tdclient = new TiledeskChatbotClient({request: req, APIURL: 'YOUR API ENDPOINT'});
   const botid = req.params.botid;
   const conversation = tdclient.supportRequest
   // immediately reply back
@@ -44,7 +44,6 @@ app.post("/bot/:botid", (req, res) => {
   const credentials = JSON.parse(process.env[botid])
   runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
-    
     console.log("query result: ", JSON.stringify(result))
     console.log("is fallback:", result.intent.isFallback)
     console.log("confidence:", result.intentDetectionConfidence)
