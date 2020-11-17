@@ -170,7 +170,7 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
 
 // Tutorial 4 - Ask user for optional Agent handoff
 
-// Tutorial 4.1 - Webhook for Bot-Agent handoff message based on opening hours
+// Tutorial 4.1 - Webhook for Bot-to-Agent handoff message based on opening hours
 app.post('/dfwebhook/:project_id', (req, res) => {
   const fulfillmentText = req.body.queryResult.fulfillmentText
   console.log("fulfillmentText:", fulfillmentText)
