@@ -180,7 +180,7 @@ app.post('/dfwebhook/:project_id', (req, res) => {
   const project_id = req.params.project_id
   const intent = req.body.queryResult.intent.displayName.toUpperCase()
   if (intent === "TALK TO AGENT") {
-    TiledeskClient.anonymousAuthentication(project_id, function(err, response, resbody) {
+    TiledeskClient.anonymousAuthentication(project_id, function(err, res, resbody) {
       if (resbody && resbody.token) {
         const tdclient = new TiledeskClient()
         tdclient.openNow(project_id, resbody.token, function(isopen) {
