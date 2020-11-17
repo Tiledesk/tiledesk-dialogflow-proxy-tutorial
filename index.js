@@ -172,7 +172,6 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
 
 // Tutorial 4.1 - Webhook for Bot-Agent handoff message based on opening hours
 app.post('/dfwebhook/:project_id', (req, res) => {
-  // console.log("req.body: " , req.body)
   const fulfillmentText = req.body.queryResult.fulfillmentText
   console.log("fulfillmentText:", fulfillmentText)
   const languageCode = req.body.queryResult.languageCode
@@ -181,21 +180,20 @@ app.post('/dfwebhook/:project_id', (req, res) => {
   const project_id = req.params.project_id
   const intent = req.body.queryResult.intent.displayName.toUpperCase()
   if (intent === "TALK TO AGENT") {
-    // for cloud apis initialize like the this:
-    // const tdclient = new TiledeskClient()
-    // for on premises installations specify your endpoint like this:
-    const tdclient = new TiledeskClient({APIURL: 'https://tiledesk-server-pre.herokuapp.com'})
-    tdclient.anonymauth(project_id, function(token) {
-      tdclient.openNow(project_id, token, function(isopen) {
-        var df_res = {}
-        if (isopen) {
-          df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
-        }
-        else {
-          df_res['fulfillmentText'] = "I'm sorry but we are closed right now."
-        }
-        res.status(200).send(JSON.stringify(df_res));
-      })
+    TiledeskClient.anonymousAuthentication(project_id, function(err, response, resbody) {
+      if (resbody && resbody.token) {
+        const tdclient = new TiledeskClient()
+        tdclient.openNow(project_id, resbody.token, function(isopen) {
+          var df_res = {}
+          if (isopen) {
+            df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
+          }
+          else {
+            df_res['fulfillmentText'] = "I'm sorry but we are closed right now."
+          }
+          res.status(200).send(JSON.stringify(df_res));
+        })
+      }
     })
   }
 });
