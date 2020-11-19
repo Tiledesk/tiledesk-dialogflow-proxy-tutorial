@@ -183,7 +183,7 @@ app.post('/dfwebhook/:project_id', (req, res) => {
     TiledeskClient.anonymousAuthentication(project_id, function(err, res, resbody) {
       if (resbody && resbody.token) {
         const tdclient = new TiledeskClient()
-        tdclient.openNow(project_id, resbody.token, function(isopen) {
+        tdclient.openNow(function(isopen) {
           var df_res = {}
           if (isopen) {
             df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
