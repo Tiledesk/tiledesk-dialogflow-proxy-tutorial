@@ -283,19 +283,6 @@ app.post('/webhook/search', async (req, res) => {
   var request_id = payload.recipient;
   console.log('request_id ', request_id);
 
-  if (!process.env.BOT_IDs) {
-    console.log("process.env.BOT_IDs not found. Please define BOT_IDs (comma separated list of bot ids) in .env");
-    return
-  }
-
-
-  const bot_ids = process.env.BOT_IDs.split(",");
-  if (!bot_ids.includes(sender_id)) {
-    return;
-  }
-
-  console.log("sender_id ", sender_id, "allowed for this webhook.");
-
   if (!req.body.payload.attributes.intent_info) {
     return;
   }
@@ -305,14 +292,12 @@ app.post('/webhook/search', async (req, res) => {
   const is_fallback = req.body.payload.attributes.intent_info.is_fallback;
   const intent_confidence = req.body.payload.attributes.intent_info.confidence;
   console.log("INFO", req.body.payload.attributes.intent_info);
-  console.log("process.env.CONFIDENCE_THRESHOLD", process.env.CONFIDENCE_THRESHOLD);
-  let confidence_threshold = process.env.CONFIDENCE_THRESHOLD ? process.env.CONFIDENCE_THRESHOLD : 0.7;
+  let confidence_threshold = 0.7;
   console.log("confidence_threshold", confidence_threshold);
   if (is_fallback || (!is_fallback && intent_confidence < confidence_threshold)) {
-    console.log("starting sharepoint search...");
+    console.log("starting Wikipedia search...");
   }
   else {
-    console.log("sharepoint search canceled.");
     return;
   }
   
