@@ -201,66 +201,8 @@ app.post('/dfwebhook/:project_id', (req, res) => {
 
 // Tutorial 6 - fallback intent with search results proposal
 // In this tutorial every fallbak will propose a set of results
-// from a knowledgeg base (KB = wikipedia)
-app.post("/search/:botid", (req, res) => {
-  const cbclient = new TiledeskChatbotClient(
-    {
-      request: req,
-      APIURL: 'https://tiledesk-server-pre.herokuapp.com'
-    });
-  console.log("cbclient", cbclient)
-  const botid = req.params.botid;
-  const supportRequest = cbclient.supportRequest
-  // immediately reply back
-  res.status(200).send({"success":true});
-  // reply messages are sent asynchronously
-  const dialogflow_session_id = supportRequest.request_id
-  const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
-  const credentials = JSON.parse(process.env[botid])
-  runDialogflowQuery(cbclient.text, dialogflow_session_id, lang, credentials)
-  .then(function(result) {
-    if (result.intent.isFallback) {
-      console.log("FIRING NOT FOUND TEXT:", cbclient.text)
-      fireNotFoundEvent(cbclient);
-    }
-    let msg = {
-      "text": result['fulfillmentText']
-    }
-    cbclient.sendMessage(msg, function (err) {
-      console.log("Message", m.text, "sent.");
-    })
-  })
-  .catch(function(err) {
-    console.log('Error: ', err);
-  })
-})
-
-function fireNotFoundEvent(cbclient) {
-  const event = {
-    name: "faqbot.answer_not_found",
-    attributes: {
-      bot: {
-          _id: cbclient.chatbot_id,
-          name: cbclient.chatbot_name
-      },
-      message: {
-          text: cbclient.text,
-          recipient_id: cbclient.request_id
-      }
-    }
-  };
-  console.log("Firing event:", event);
-  cbclient.tiledeskClient.fireEvent(cbclient.project_id, event, cbclient.token, function(err, result) {
-    if (err) {
-      console.log("ERROR FIRING EVENT:", err)
-    }
-    else {
-      console.log("EVENT FIRED:", result);
-    }
-  });
-}
-
-// webhook for Tutorial 6: Search on fallback 
+// from a knowledge base (wikipedia)
+// Thisi is the webhook for Tutorial 6 
 app.post('/webhook/search', async (req, res) => {
   console.log('webhook tiledesk ');
   console.log('req.body ', JSON.stringify(req.body.payload.attributes));
@@ -333,11 +275,15 @@ app.post('/webhook/search', async (req, res) => {
       senderFullname: senderFullname,
       attributes: attributes
     };
-    const tdclient = new TiledeskClient({
-      APIKEY: '__APIKEY__'
-    });
-    if (attributes.attachment.buttons.length>0) {
-      tdclient.sendMessage(project_id, request_id, msg, token, function(err, result) {
+    const tdclient = new TiledeskClient(
+      {
+        APIKEY: '__APIKEY__',
+        project_id: project_id,
+        token: token,
+        log: true
+      });
+    if (attributes.attachment.buttons.length > 0) {
+      tdclient.sendMessage(request_id, msg, function(err, result) {
         console.log("err?", err);
       });
     }
