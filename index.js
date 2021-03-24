@@ -366,6 +366,7 @@ app.get('/search', (req, res) => {
   wikipedia.doQuery(query, (err, results) => {
     console.log("results", results)
     res.status(200).send(results);
+    
   });
 });
 
