@@ -13,7 +13,8 @@
   "dependencies": {
     "@tiledesk/tiledesk-chatbot-client": "^0.5.15",
     "@tiledesk/tiledesk-chatbot-util": "^0.8.5",
-    "@tiledesk/tiledesk-client": "^0.6.17",
+    "@tiledesk/tiledesk-client": "^0.6.18",
+    "axios": "^0.21.1",
     "body-parser": "^1.19.0",
     "dialogflow": "^1.1.2",
     "express": "^4.17.1",

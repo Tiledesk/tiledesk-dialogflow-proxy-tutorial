@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const { TiledeskChatbotClient } = require('@tiledesk/tiledesk-chatbot-client');
 const { TiledeskChatbotUtil } = require('@tiledesk/tiledesk-chatbot-util')
 const { TiledeskClient } = require('@tiledesk/tiledesk-client');
+const { Wikipedia } = require('./wikipedia');
 const dialogflow = require('dialogflow');
 const app = express();
 app.use(bodyParser.json());
@@ -198,7 +199,177 @@ app.post('/dfwebhook/:project_id', (req, res) => {
   }
 });
 
-var port = process.env.PORT || 3000;
+// Tutorial 6 - fallback intent with search results proposal
+// In this tutorial every fallbak will propose a set of results
+// from a knowledgeg base (KB = wikipedia)
+app.post("/search/:botid", (req, res) => {
+  const cbclient = new TiledeskChatbotClient(
+    {
+      request: req,
+      APIURL: 'https://tiledesk-server-pre.herokuapp.com'
+    });
+  console.log("cbclient", cbclient)
+  const botid = req.params.botid;
+  const supportRequest = cbclient.supportRequest
+  // immediately reply back
+  res.status(200).send({"success":true});
+  // reply messages are sent asynchronously
+  const dialogflow_session_id = supportRequest.request_id
+  const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
+  const credentials = JSON.parse(process.env[botid])
+  runDialogflowQuery(cbclient.text, dialogflow_session_id, lang, credentials)
+  .then(function(result) {
+    if (result.intent.isFallback) {
+      console.log("FIRING NOT FOUND TEXT:", cbclient.text)
+      fireNotFoundEvent(cbclient);
+    }
+    let msg = {
+      "text": result['fulfillmentText']
+    }
+    cbclient.sendMessage(msg, function (err) {
+      console.log("Message", m.text, "sent.");
+    })
+  })
+  .catch(function(err) {
+    console.log('Error: ', err);
+  })
+})
+
+function fireNotFoundEvent(cbclient) {
+  const event = {
+    name: "faqbot.answer_not_found",
+    attributes: {
+      bot: {
+          _id: cbclient.chatbot_id,
+          name: cbclient.chatbot_name
+      },
+      message: {
+          text: cbclient.text,
+          recipient_id: cbclient.request_id
+      }
+    }
+  };
+  console.log("Firing event:", event);
+  cbclient.tiledeskClient.fireEvent(cbclient.project_id, event, cbclient.token, function(err, result) {
+    if (err) {
+      console.log("ERROR FIRING EVENT:", err)
+    }
+    else {
+      console.log("EVENT FIRED:", result);
+    }
+  });
+}
+
+// webhook for Tutorial 6: Search on fallback 
+app.post('/webhook/search', async (req, res) => {
+  console.log('webhook tiledesk ');
+  console.log('req.body ', JSON.stringify(req.body));
+  res.send(200);
+  
+  var project_id = req.body.hook.id_project;
+  console.log('project_id ', project_id);
+
+  const payload = req.body.payload;
+
+  var sender_id = payload.sender; //"bot_" + bot._id;
+  console.log('sender_id ', sender_id);
+  
+  var senderFullname = payload.senderFullname; //bot.name;
+  console.log('senderFullname ', senderFullname);
+  
+  var token = req.body.token;
+  console.log('token ', token);
+  
+  var request_id = payload.recipient;
+  console.log('request_id ', request_id);
+
+  if (!process.env.BOT_IDs) {
+    console.log("process.env.BOT_IDs not found. Please define BOT_IDs (comma separated list of bot ids) in .env");
+    return
+  }
+
+
+  const bot_ids = process.env.BOT_IDs.split(",");
+  if (!bot_ids.includes(sender_id)) {
+    return;
+  }
+
+  console.log("sender_id ", sender_id, "allowed for this webhook.");
+
+  if (!req.body.payload.attributes.intent_info) {
+    return;
+  }
+
+  console.log("intent_info ok", req.body.payload.attributes.intent_info);
+
+  const is_fallback = req.body.payload.attributes.intent_info.is_fallback;
+  const intent_confidence = req.body.payload.attributes.intent_info.confidence;
+  console.log("INFO", req.body.payload.attributes.intent_info);
+  console.log("process.env.CONFIDENCE_THRESHOLD", process.env.CONFIDENCE_THRESHOLD);
+  let confidence_threshold = process.env.CONFIDENCE_THRESHOLD ? process.env.CONFIDENCE_THRESHOLD : 0.7;
+  console.log("confidence_threshold", confidence_threshold);
+  if (is_fallback || (!is_fallback && intent_confidence < confidence_threshold)) {
+    console.log("starting sharepoint search...");
+  }
+  else {
+    console.log("sharepoint search canceled.");
+    return;
+  }
+  
+  var question_payload = req.body.payload.attributes.intent_info.question_payload;
+  console.log("question_payload", question_payload)
+  var text = question_payload.text;
+  console.log('text ', text);
+
+  const wikipedia = new Wikipedia()
+  wikipedia.doQuery(text, (err, results) => {
+    // ex. results:
+    // [{
+    //   "title": "Teams",
+    //   "path": "https://digitalbrickoffice365.sharepoint.com/SitePages/Teams.aspx"
+    // }, {
+    //   "title": "Teams",
+    //   "path": "https://digitalbrickoffice365.sharepoint.com/SitePages/Microsoft-Teams-prova.aspx"
+    // }]
+    let attributes = {
+      attachment: {
+          type:"template",
+          buttons: []
+      }
+    };
+    results.forEach(content => {
+      var button = {type:"url", value: content.title, link: content.path}
+      attributes.attachment.buttons.push(button);
+    });
+    console.log("attributes", JSON.stringify(attributes));
+    var msg = {
+      text: 'You can be interested in this articles',
+      sender: sender_id,
+      senderFullname: senderFullname,
+      attributes: attributes
+    };
+    const tdclient = new TiledeskClient({
+      APIKEY: '__APIKEY__'
+    });
+    if (attributes.attachment.buttons.length>0) {
+      tdclient.sendMessage(project_id, request_id, msg, token, function(err, result) {
+        console.log("err?", err);
+      });
+    }
+  });
+ });
+
+app.get('/search', (req, res) => {
+  const query = req.query['query'];
+  console.log("query", query)
+  const wikipedia = new Wikipedia()
+  wikipedia.doQuery(query, (err, results) => {
+    console.log("results", results)
+    res.status(200).send(results);
+  });
+});
+
+var port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log('server started');
 });
