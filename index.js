@@ -263,7 +263,7 @@ function fireNotFoundEvent(cbclient) {
 // webhook for Tutorial 6: Search on fallback 
 app.post('/webhook/search', async (req, res) => {
   console.log('webhook tiledesk ');
-  console.log('req.body ', JSON.stringify(req.body.attributes));
+  console.log('req.body ', JSON.stringify(req.body.payload.attributes));
   res.send(200);
   
   var project_id = req.body.hook.id_project;
