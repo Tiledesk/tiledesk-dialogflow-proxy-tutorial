@@ -86,13 +86,14 @@ app.post("/microlang-bot/:botid", (req, res) => {
     if(res.statusCode === 200) {
       const reply_text = result['fulfillmentText'];
       const parsed_reply = TiledeskChatbotUtil.parseReply(reply_text);
-      const msg = parsed_reply.message;
+      console.log(".....", parsed_reply);
+      var msg = parsed_reply.message;
       // NOTE: you can also use parts of the parsed message, like this
-      // var msg = {
-      //   "text": parsed_message.text,
-      //   "type": parsed_message.type,
-      //   "attributes": msg_attributes,
-      //   "metadata": parsed_message.metadata,
+      // var reply = {
+      //   "text": msg.text,
+      //   "type": msg.type,
+      //   "attributes": msg.attributes,
+      //   "metadata": msg.metadata,
       //   "senderFullname": tdclient.botName
       // }
       tdclient.sendMessage(msg, function (err) {
