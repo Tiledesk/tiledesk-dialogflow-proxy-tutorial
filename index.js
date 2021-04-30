@@ -66,7 +66,7 @@ app.post("/bot/:botid", (req, res) => {
 
 // Tutorial 2 - Advanced tutorial using 'micro language' to render buttons or images
 app.post("/microlang-bot/:botid", (req, res) => {
-  const tdclient = new TiledeskChatbotClient({request: req});
+  const tdclient = new TiledeskChatbotClient({APIKEY:'__APIKEY__', request: req});
   const botid = req.params.botid;
   console.log("botid:", botid)
   const conversation = tdclient.supportRequest
@@ -84,9 +84,9 @@ app.post("/microlang-bot/:botid", (req, res) => {
     console.log("confidence:", result.intentDetectionConfidence)
     // intentDetectionConfidence
     if(res.statusCode === 200) {
-      const reply_text = result['fulfillmentText']
-      const parsed_reply = new TiledeskChatbotUtil().parseReply(reply_text)
-      const msg = parsed_reply.message
+      const reply_text = result['fulfillmentText'];
+      const parsed_reply = TiledeskChatbotUtil.parseReply(reply_text);
+      const msg = parsed_reply.message;
       // NOTE: you can also use parts of the parsed message, like this
       // var msg = {
       //   "text": parsed_message.text,
