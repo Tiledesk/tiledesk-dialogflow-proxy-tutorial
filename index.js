@@ -3,7 +3,6 @@ const bodyParser = require('body-parser');
 const { TiledeskChatbotClient } = require('@tiledesk/tiledesk-chatbot-client');
 const { TiledeskChatbotUtil } = require('@tiledesk/tiledesk-chatbot-util')
 const { TiledeskClient } = require('@tiledesk/tiledesk-client');
-const { Wikipedia } = require('./wikipedia');
 const dialogflow = require('dialogflow');
 const app = express();
 app.use(bodyParser.json());
@@ -32,18 +31,31 @@ async function runDialogflowQuery(text, sessionId, language_code, credentials) {
 // Tutorial 1 - Basic Dialogflow extarnal endpoint
 app.post("/bot/:botid", (req, res) => {
   // for cloud apis initialize like the this:
-  const tdclient = new TiledeskChatbotClient({request: req})
+  // const tdclient = new TiledeskChatbotClient({request: req})
+  const cbclient = new TiledeskChatbotClient(
+    {
+      request: req,
+      response: res,
+      APIKEY: '____APIKEY____'
+    });
   // for on-prem installations specify your endpoint like this:
+  // const cbclient = new TiledeskChatbotClient(
+  //   {
+  //     request: req,
+  //     response: res,
+  //     APIKEY: '____APIKEY____',
+  //     APIURL: 'YOUR ON-PREM API ENDPOINT'
+  //   });
   // const tdclient = new TiledeskChatbotClient({request: req, APIURL: 'YOUR API ENDPOINT'});
   const botid = req.params.botid;
-  const conversation = tdclient.supportRequest
+  const conversation = cbclient.supportRequest
   // immediately reply back
   res.status(200).send({"success":true});
   // reply messages are sent asynchronously
   const dialogflow_session_id = conversation.request_id
   const lang = 'en-EN' // lang must be the same of the Dialogflow Agent
   const credentials = JSON.parse(process.env[botid])
-  runDialogflowQuery(tdclient.text, dialogflow_session_id, lang, credentials)
+  runDialogflowQuery(cbclient.text, dialogflow_session_id, lang, credentials)
   .then(function(result) {
     console.log("query result: ", JSON.stringify(result))
     console.log("is fallback:", result.intent.isFallback)
@@ -54,7 +66,7 @@ app.post("/bot/:botid", (req, res) => {
       var msg = {
         "text": reply_text
       }
-      tdclient.sendMessage(msg, function (err) {
+      cbclient.tiledeskClient.sendMessage(msg, function (err) {
         console.log("Message sent.");
       })
     }
@@ -170,8 +182,9 @@ app.post("/bot-fallback-handoff/:botid", (req, res) => {
 })
 
 // Tutorial 4 - Ask user for optional Agent handoff
+// No code is needed for explicit human handoff!
 
-// Tutorial 4.1 - Webhook for Bot-to-Agent handoff message based on opening hours
+// Tutorial 5 - Webhook for Bot-to-Agent handoff message based on opening hours
 app.post('/dfwebhook/:project_id', (req, res) => {
   const fulfillmentText = req.body.queryResult.fulfillmentText
   console.log("fulfillmentText:", fulfillmentText)
@@ -181,123 +194,20 @@ app.post('/dfwebhook/:project_id', (req, res) => {
   const project_id = req.params.project_id
   const intent = req.body.queryResult.intent.displayName.toUpperCase()
   if (intent === "TALK TO AGENT") {
-    TiledeskClient.anonymousAuthentication(project_id, function(err, res, resbody) {
-      if (resbody && resbody.token) {
-        const tdclient = new TiledeskClient()
-        tdclient.openNow(function(isopen) {
-          var df_res = {}
-          if (isopen) {
-            df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
-          }
-          else {
-            df_res['fulfillmentText'] = "I'm sorry but we are closed right now."
-          }
-          res.status(200).send(JSON.stringify(df_res));
-        })
-      }
-    })
-  }
-});
-
-// Tutorial 6 - fallback intent with search results proposal
-// In this tutorial every fallbak will propose a set of results
-// from a knowledge base (wikipedia)
-// Thisi is the webhook for Tutorial 6 
-app.post('/webhook/search', async (req, res) => {
-  console.log('webhook tiledesk ');
-  console.log('req.body ', JSON.stringify(req.body.payload.attributes));
-  res.send(200);
-  
-  var project_id = req.body.hook.id_project;
-  console.log('project_id ', project_id);
-
-  const payload = req.body.payload;
-
-  var sender_id = payload.sender; //"bot_" + bot._id;
-  console.log('sender_id ', sender_id);
-  
-  var senderFullname = payload.senderFullname; //bot.name;
-  console.log('senderFullname ', senderFullname);
-  
-  var token = req.body.token;
-  console.log('token ', token);
-  
-  var request_id = payload.recipient;
-  console.log('request_id ', request_id);
-
-  if (!req.body.payload.attributes.intent_info) {
-    return;
-  }
-
-  console.log("intent_info ok", req.body.payload.attributes.intent_info);
-
-  const is_fallback = req.body.payload.attributes.intent_info.is_fallback;
-  const intent_confidence = req.body.payload.attributes.intent_info.confidence;
-  console.log("INFO", req.body.payload.attributes.intent_info);
-  let confidence_threshold = 0.7;
-  console.log("confidence_threshold", confidence_threshold);
-  if (is_fallback || (!is_fallback && intent_confidence < confidence_threshold)) {
-    console.log("starting Wikipedia search...");
-  }
-  else {
-    return;
-  }
-  
-  var question_payload = req.body.payload.attributes.intent_info.question_payload;
-  console.log("question_payload", question_payload)
-  var text = question_payload.text;
-  console.log('text ', text);
-
-  const wikipedia = new Wikipedia()
-  wikipedia.doQuery(text, (err, results) => {
-    // ex. results:
-    // [{
-    //   "title": "Teams",
-    //   "path": "https://digitalbrickoffice365.sharepoint.com/SitePages/Teams.aspx"
-    // }, {
-    //   "title": "Teams",
-    //   "path": "https://digitalbrickoffice365.sharepoint.com/SitePages/Microsoft-Teams-prova.aspx"
-    // }]
-    let attributes = {
-      attachment: {
-          type:"template",
-          buttons: []
-      }
-    };
-    results.forEach(content => {
-      var button = {type:"url", value: content.title, link: content.path}
-      attributes.attachment.buttons.push(button);
-    });
-    console.log("attributes", JSON.stringify(attributes));
-    var msg = {
-      text: 'You can be interested in this articles',
-      sender: sender_id,
-      senderFullname: senderFullname,
-      attributes: attributes
-    };
-    const tdclient = new TiledeskClient(
-      {
-        APIKEY: '__APIKEY__',
-        project_id: project_id,
-        token: token,
-        log: true
-      });
-    if (attributes.attachment.buttons.length > 0) {
-      tdclient.sendMessage(request_id, msg, function(err, result) {
-        console.log("err?", err);
+    if (resbody && resbody.token) {
+      const tdclient = new TiledeskClient()
+      tdclient.openNow(function(isopen) {
+        var df_res = {}
+        if (isopen) {
+          df_res['fulfillmentText'] = "We are open! Switching to agent\\agent"
+        }
+        else {
+          df_res['fulfillmentText'] = "I'm sorry but we are closed right now."
+        }
+        res.status(200).send(JSON.stringify(df_res));
       });
     }
-  });
- });
-
-app.get('/search', (req, res) => {
-  const query = req.query['query'];
-  console.log("query", query)
-  const wikipedia = new Wikipedia()
-  wikipedia.doQuery(query, (err, results) => {
-    console.log("results", results)
-    res.status(200).send(results);
-  });
+  }
 });
 
 var port = process.env.PORT || 3001;
